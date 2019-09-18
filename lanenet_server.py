@@ -2,8 +2,8 @@
 # Start the server:
 #   python run_keras_server.py
 # Submit a request via cURL:
-#   curl -X POST -F image=@dog.jpg 'http://localhost:5000/predict'
-# Submita a request via Python:
+#   curl -X POST -F image=@<image> 'http://localhost:<port>/predict'
+# Submit a request via Python:
 # python simple_request.py
 
 # import the necessary packages
@@ -32,6 +32,7 @@ from werkzeug import secure_filename
 import io
 import sys
 
+from api import apicfg
 # custom imports
 APP_ROOT_DIR = os.path.join('/aimldl-cod/external/','lanenet-lane-detection')
 
@@ -47,6 +48,12 @@ from lanenet_model import lanenet
 from lanenet_model import lanenet_postprocess
 
 CFG = global_config.cfg
+
+IP = apicfg.FLASK_IP
+print("IP: {}".format(IP))
+
+PORT = apicfg.FLASK_PORT
+print("PORT: {}".format(PORT))
 
 
 # initialize our Flask application and the Keras model
@@ -92,16 +99,12 @@ def minmax_scale(input_arr):
 
 @app.route("/predict", methods=["POST"])
 def predict():
+
   # initialize the data dictionary that will be returned from the
   # view
-  data = {
-    "type" : "vidteq-lnd-1",
-    "dnnarch" : "lanenet"
-    # "result" : {}  
 
-  }
   data = {"success": False}
-
+  t0 = time.time()
   # ensure an image was properly uploaded to our endpoint
   if flask.request.method == "POST":
     if flask.request.files.get("image"):
@@ -116,6 +119,11 @@ def predict():
       image = np.array(image)
       # print(type(image))
       # print(image)
+
+      t1 = time.time()
+      time_taken_imread = (t1 - t0)
+      log.debug('Total time taken in time_taken_imread: %f seconds' %(time_taken_imread))
+
       
       # preprocess the image and prepare it for classification
       # image = prepare_image(image)
@@ -124,23 +132,23 @@ def predict():
       # # of predictions to return to the client
       # preds = model.predict(image)
       # results = imagenet_utils.decode_predictions(preds)
-      data["predictions"] = []
 
       # # loop over the results and add them to the list of
       # # returned predictions
       # for (imagenetID, label, prob) in results[0]:
       #   r = {"label": label, "probability": float(prob)}
       #   data["predictions"].append(r)
-      weights_path = '/aimldl-cod/external/lanenet-lane-detection/model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt'
+      # weights_path = '/aimldl-cod/external/lanenet-lane-detection/model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt'
+      weights_path = apicfg.WEIGHTS_PATH
       # assert ops.exists(image_path), '{:s} not exist'.format(image_path)
 
       log.info('Start reading image and preprocessing')
-      t_start = time.time()
+      # t_start = time.time()
       # image = cv2.imread(image_path, cv2.IMREAD_COLOR)
       image_vis = image
       image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
       image = image / 127.5 - 1.0
-      log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
+      # log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
 
       input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
 
@@ -163,37 +171,39 @@ def predict():
 
           saver.restore(sess=sess, save_path=weights_path)
 
-          t_start = time.time()
+          t2 = time.time()
           binary_seg_image, instance_seg_image = sess.run(
               [binary_seg_ret, instance_seg_ret],
               feed_dict={input_tensor: [image]}
           )
-          t_cost = time.time() - t_start
-          log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
+          t3 = time.time()
+          t_cost = t3 - t2
+          log.info('Single image inference cost time: {:.5f}s'.format(t_cost))
 
           postprocess_result = postprocessor.postprocess(
               binary_seg_result=binary_seg_image[0],
               instance_seg_result=instance_seg_image[0],
               source_image=image_vis
           )
-          mask_image = postprocess_result['mask_image']
+          # visualization
+          # mask_image = postprocess_result['mask_image']
 
-          for i in range(CFG.TRAIN.EMBEDDING_FEATS_DIMS):
-              instance_seg_image[0][:, :, i] = minmax_scale(instance_seg_image[0][:, :, i])
-          embedding_image = np.array(instance_seg_image[0], np.uint8)
+          # for i in range(CFG.TRAIN.EMBEDDING_FEATS_DIMS):
+          #     instance_seg_image[0][:, :, i] = minmax_scale(instance_seg_image[0][:, :, i])
+          # embedding_image = np.array(instance_seg_image[0], np.uint8)
 
-          plt.figure('mask_image')
-          plt.imshow(mask_image[:, :, (2, 1, 0)])
-          plt.figure('src_image')
-          plt.imshow(image_vis[:, :, (2, 1, 0)])
-          plt.figure('instance_image')
-          plt.imshow(embedding_image[:, :, (2, 1, 0)])
-          plt.figure('binary_image')
-          plt.imshow(binary_seg_image[0] * 255, cmap='gray')
-          # plt.show()
+          # plt.figure('mask_image')
+          # plt.imshow(mask_image[:, :, (2, 1, 0)])
+          # plt.figure('src_image')
+          # plt.imshow(image_vis[:, :, (2, 1, 0)])
+          # plt.figure('instance_image')
+          # plt.imshow(embedding_image[:, :, (2, 1, 0)])
+          # plt.figure('binary_image')
+          # plt.imshow(binary_seg_image[0] * 255, cmap='gray')
+          # # plt.show()
 
-          ts = time.time()
-          st = datetime.datetime.fromtimestamp(ts).strftime('%d-%m-%Y_%H-%M-%S')
+          # ts = time.time()
+          # st = datetime.datetime.fromtimestamp(ts).strftime('%d-%m-%Y_%H-%M-%S')
 
           # cv2.imwrite('instance_mask_image.png', mask_image)
           # cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
@@ -201,20 +211,40 @@ def predict():
 
       sess.close()
 
+      t4 = time.time()
+
       pred_json = postprocess_result['pred_json']
-      data["predictions"].append(pred_json)
+      # data["result"] = pred_json
+
+      t5 = time.time()
+      time_taken_res_preparation = (t5 - t4)
+      log.debug('Total time taken in time_taken_res_preparation: %f seconds' %(time_taken_res_preparation))
+
+      t6 = time.time()
+      tt_turnaround = (t6 - t0)
+      log.debug('Total time taken in tt_turnaround: %f seconds' %(tt_turnaround))
 
       # with open('pred-'+st+'.json','w') as outfile:
       #         json.dump(pred_json, outfile)
 
       # return
+      data = {
+        'type' : 'vidteq-lnd-1',
+        'dnnarch' : 'lanenet',
+        'result' : pred_json,
+        'timings': {
+          'image_read': time_taken_imread,
+          'detect': t_cost,
+          # ,'res_preparation': time_taken_res_preparation
+          'tt_turnaround': tt_turnaround
+        }
+      }
 
 
       # indicate that the request was a success
       data["success"] = True
 
   # return the data dictionary as a JSON response
-  # return flask.jsonify(data)
   return flask.jsonify(data)
 
 # if this is the main thread of execution first load the model and
@@ -224,4 +254,4 @@ if __name__ == "__main__":
     "please wait until server has fully started"))
   load_model()
   # app.run()
-  app.run(debug = False, threaded = False, host='0.0.0.0')
+  app.run(debug = False, threaded = False, host=IP, port=PORT)

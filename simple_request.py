@@ -6,17 +6,14 @@ import requests
 
 # initialize the Keras REST API endpoint URL along with the input
 # image path
-KERAS_REST_API_URL = "http://localhost:5000/predict"
+KERAS_REST_API_URL = "http://localhost:5050/predict"
 # IMAGE_PATH = "dog.jpg"
 IMAGE_PATH = "/aimldl-cod/practice/nikhil/sample-images/7.jpg"
-image_name = IMAGE_PATH.split('/')[-1].split('.')[0]
+# image_name = IMAGE_PATH.split('/')[-1].split('.')[0]
 
 # load the input image and construct the payload for the request
 image = open(IMAGE_PATH, "rb").read()
-payload = {
-  "image": image,
-  "image_name" : image_name
-}
+payload = { "image": image }
 
 # submit the request
 r = requests.post(KERAS_REST_API_URL, files=payload).json()

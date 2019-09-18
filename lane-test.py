@@ -29,6 +29,7 @@ from PIL import Image
 import numpy as np
 import flask
 from flask import request, redirect, url_for, send_from_directory, render_template
+from flask_cors import CORS, cross_origin
 from werkzeug import secure_filename
 import io
 import sys
@@ -88,15 +89,24 @@ def minmax_scale(input_arr):
 
 
 @app.route("/predict", methods=["POST"])
+@cross_origin()
 def predict():
   # initialize the data dictionary that will be returned from the
   # view
   data = {"success": False}
-  image = request.files["image"]
-  image_name = request.fies["image_name"]
+  # image = request.files["image"]
   # log.debug("image: {}".format(image))
   # image_name = secure_filename(image.filename)
-  log.debug("image_name: {}".format(image_name))
+  # log.debug("image.filename: {}".format(image_name))
+
+  log.info("----------------------------->")
+  log.info("request: {}".format(request))
+  log.info("request.files: {}".format(request.files))
+  image = request.files["image"]
+  image_name = secure_filename(image.filename)
+  log.info("type_of_image: {}".format(type(image_name)))
+  log.info("image.filename: {}".format(image_name))
+  print(image_name)
 
   # ensure an image was properly uploaded to our endpoint
   # if flask.request.method == "POST":
@@ -194,6 +204,6 @@ def predict():
 if __name__ == "__main__":
   print(("* Loading Keras model and Flask starting server..."
     "please wait until server has fully started"))
-  load_model()
+  # load_model()
   # app.run()
-  app.run(debug = False, threaded = False, host='0.0.0.0')
+  app.run(debug = False, threaded = False, host = '0.0.0.0', port = '5050')
