@@ -7,30 +7,28 @@
 # python simple_request.py
 
 # import the necessary packages
-import argparse
 import os
 import time
 import datetime
 import json
-import requests
-import base64
-from PIL import Image
-from io import BytesIO
 import cv2
 import glog as log
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-# from keras.applications import ResNet50
-from keras.preprocessing.image import img_to_array
-from keras.applications import imagenet_utils
 from PIL import Image
+from io import BytesIO
 import numpy as np
-import flask
-from werkzeug import secure_filename
 import io
 import sys
+
+import flask
+from flask import request, redirect, url_for, send_from_directory, render_template
+from werkzeug import secure_filename
+from flask import Response
+from flask import jsonify
+
 
 from api import apicfg
 # custom imports
@@ -76,12 +74,27 @@ def prepare_image(image):
 
   # resize the input image and preprocess it
   # image = image.resize(target)
-  image = img_to_array(image)
-  image = np.expand_dims(image, axis=0)
-  image = imagenet_utils.preprocess_input(image)
+  # image = img_to_array(image)
+  # image = np.expand_dims(image, axis=0)
+  # image = imagenet_utils.preprocess_input(image)
+  image_bytes = image.read()
+  # im = np.array(Image.open(io.BytesIO(image_bytes)))
+  image = Image.open(io.BytesIO(image_bytes))
+  # log.info("image : {}".format(image))
+  log.info("image_shape : {}".format(image.size))
+  if apicfg.RESIZE == True:
+  #   image = image.convert("RGB")  
+    image = image.resize((1280,720), Image.ANTIALIAS)
+    log.info("Resized_image_shape : {}".format(image.size))
+
+  image = np.array(image)
 
   # return the processed image
   return image
+
+def allowed_file(filename):
+  fn, ext = os.path.splitext(os.path.basename(filename))
+  return ext.lower() in apicfg.ALLOWED_IMAGE_TYPE
 
 def minmax_scale(input_arr):
   """
@@ -100,23 +113,35 @@ def minmax_scale(input_arr):
 @app.route("/predict", methods=["POST"])
 def predict():
 
-  # initialize the data dictionary that will be returned from the
-  # view
+  """
+  Main function for Lanenet AI API for prediction 
+  """
+  try:
+    # apires = {"success": False}
+    t0 = time.time()
+    # ensure an image was properly uploaded to our endpoint
+    # if flask.request.method == "POST":
+      # if flask.request.files.get("image"):
+        # read the image in PIL format
+        # image = flask.request.files["image"].read()
+        # image_name = secure_filename(image.filename)
+        # log.info("image.filename: {}".format(image_name))
+        # image = Image.open(io.BytesIO(image))
+    log.info("----------------------------->")
+    # log.info("request: {}".format(request))
+    # log.info("request.files: {}".format(request.files))
+    image = request.files["image"]
+    log.debug("image: {}".format(image))
+    image_name = secure_filename(image.filename)
+    log.info("image.filename: {}".format(image_name))
 
-  data = {"success": False}
-  t0 = time.time()
-  # ensure an image was properly uploaded to our endpoint
-  if flask.request.method == "POST":
-    if flask.request.files.get("image"):
-      # read the image in PIL format
-      image = flask.request.files["image"].read()
-      # image_name = secure_filename(image.filename)
-      # log.info("image.filename: {}".format(image_name))
-      image = Image.open(io.BytesIO(image))
-      
+    if image and allowed_file(image_name):
+      # resizes image from 1920*1080 to 1280*720
+      image = prepare_image(image)
+      # log.info("image shape is {}".format(image))
 
       # convert image to numpy array      
-      image = np.array(image)
+      # image = np.array(image)
       # print(type(image))
       # print(image)
 
@@ -124,7 +149,7 @@ def predict():
       time_taken_imread = (t1 - t0)
       log.debug('Total time taken in time_taken_imread: %f seconds' %(time_taken_imread))
 
-      
+
       # preprocess the image and prepare it for classification
       # image = prepare_image(image)
 
@@ -137,7 +162,7 @@ def predict():
       # # returned predictions
       # for (imagenetID, label, prob) in results[0]:
       #   r = {"label": label, "probability": float(prob)}
-      #   data["predictions"].append(r)
+      #   apires["predictions"].append(r)
       # weights_path = '/aimldl-cod/external/lanenet-lane-detection/model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt'
       weights_path = apicfg.WEIGHTS_PATH
       # assert ops.exists(image_path), '{:s} not exist'.format(image_path)
@@ -214,7 +239,7 @@ def predict():
       t4 = time.time()
 
       pred_json = postprocess_result['pred_json']
-      # data["result"] = pred_json
+      # apires["result"] = pred_json
 
       t5 = time.time()
       time_taken_res_preparation = (t5 - t4)
@@ -228,10 +253,13 @@ def predict():
       #         json.dump(pred_json, outfile)
 
       # return
-      data = {
+      res_code = 200
+      apires = {
         'type' : 'vidteq-lnd-1',
         'dnnarch' : 'lanenet',
+        'image_name' : image_name,
         'result' : pred_json,
+        'status_code': res_code,
         'timings': {
           'image_read': time_taken_imread,
           'detect': t_cost,
@@ -239,13 +267,50 @@ def predict():
           'tt_turnaround': tt_turnaround
         }
       }
+    else:
+      res_code = 400
+      apires = {
+        "type": 'vidteq-lnd-1',
+        "dnnarch": 'lanenet',
+        'image_name' : None,
+        "result": None,
+        "error": "Invalid Image Type. Allowed Image Types are: {}".format(appcfg.ALLOWED_IMAGE_TYPE),
+        'status_code': res_code,
+        'timings': {
+          'image_read': -1,
+          'detect': -1,
+          'res_preparation': -1,
+          'tt_turnaround': -1
+        }
+      }
+  except Exception as e:
+    log.error("Exception in detection", exc_info=True)
+    res_code = 500
+    apires = {
+      "type": None,
+      "dnnarch": None,
+      'image_name' : None,
+      "result": None,
+      "error": "Internal Error. Exception in detection.",
+      'status_code': res_code,
+      'timings': {
+        'image_read': -1,
+        'detect': -1,
+        'res_preparation': -1,
+        'tt_turnaround': -1
+      }
+    }
+  log.debug("apires: {}".format(apires)) 
 
 
-      # indicate that the request was a success
-      data["success"] = True
-
-  # return the data dictionary as a JSON response
-  return flask.jsonify(data)
+  # indicate that the request was a success
+  # apires["success"] = True
+  log.debug("apires: {}".format(apires))
+  res = Response(json.dumps(apires), status=res_code, mimetype='application/json')
+  log.debug("res: {}".format(res))
+  # return the apires dictionary as a JSON response
+  # return flask.jsonify(apires)
+  return res
 
 # if this is the main thread of execution first load the model and
 # then start the server

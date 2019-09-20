@@ -8,6 +8,7 @@ import requests
 # image path
 KERAS_REST_API_URL = "http://localhost:5050/predict"
 # IMAGE_PATH = "dog.jpg"
+# IMAGE_PATH = "/aimldl-cod/practice/nikhil/sample-images/7.jpg"
 IMAGE_PATH = "/aimldl-cod/practice/nikhil/sample-images/7.jpg"
 # image_name = IMAGE_PATH.split('/')[-1].split('.')[0]
 
