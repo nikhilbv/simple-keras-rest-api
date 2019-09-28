@@ -208,7 +208,8 @@ def predict():
           postprocess_result = postprocessor.postprocess(
               binary_seg_result=binary_seg_image[0],
               instance_seg_result=instance_seg_image[0],
-              source_image=image_vis
+              source_image=image_vis,
+              image_name=image_name
           )
           # visualization
           # mask_image = postprocess_result['mask_image']
@@ -257,7 +258,6 @@ def predict():
       apires = {
         'type' : 'vidteq-lnd-1',
         'dnnarch' : 'lanenet',
-        'image_name' : image_name,
         'result' : pred_json,
         'status_code': res_code,
         'timings': {
@@ -272,7 +272,6 @@ def predict():
       apires = {
         "type": 'vidteq-lnd-1',
         "dnnarch": 'lanenet',
-        'image_name' : None,
         "result": None,
         "error": "Invalid Image Type. Allowed Image Types are: {}".format(appcfg.ALLOWED_IMAGE_TYPE),
         'status_code': res_code,
@@ -289,7 +288,6 @@ def predict():
     apires = {
       "type": None,
       "dnnarch": None,
-      'image_name' : None,
       "result": None,
       "error": "Internal Error. Exception in detection.",
       'status_code': res_code,
