@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Lanenet</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/enhanced.css') }}">
+    <script type="text/javascript" src="http://filamentgroup.github.com/EnhanceJS/enhance.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='js/jQuery.fileinput.js')}}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='js/example.js')}}"></script>
+  </head>
+  <body >
+    <form action="#" method="post" enctype="multipart/form-data">
+      <fieldset>
+        <legend>Lanenet Port</legend>
+        <label for="file">Choose photo</label>
+        <input type="file" name="image" id="file" />
+        <input type="submit" name="upload" id="upload" value="Send" />
+      </fieldset>
+    </form>
+  </body>
+</html>
+  
+  

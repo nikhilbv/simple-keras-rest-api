@@ -310,6 +310,14 @@ def predict():
   # return flask.jsonify(apires)
   return res
 
+@app.route('/', methods=['GET', 'POST'])
+def upload_file():
+  if request.method == 'POST':
+    res = predict()
+    return res
+
+  return render_template('index.html') 
+
 # if this is the main thread of execution first load the model and
 # then start the server
 if __name__ == "__main__":
