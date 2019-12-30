@@ -32,7 +32,7 @@ from flask import jsonify
 
 from api import apicfg
 # custom imports
-APP_ROOT_DIR = os.path.join('/aimldl-cod/external/','lanenet-lane-detection')
+APP_ROOT_DIR = os.path.join('/codehub/external/','lanenet-lane-detection')
 
 if APP_ROOT_DIR not in sys.path:
   sys.path.insert(0, APP_ROOT_DIR)
@@ -83,7 +83,6 @@ def prepare_image(image):
   # log.info("image : {}".format(image))
   log.info("image_shape : {}".format(image.size))
   if apicfg.RESIZE == True:
-  #   image = image.convert("RGB")  
     image = image.resize((1280,720), Image.ANTIALIAS)
     log.info("Resized_image_shape : {}".format(image.size))
 
@@ -273,7 +272,7 @@ def predict():
         "type": 'vidteq-lnd-1',
         "dnnarch": 'lanenet',
         "result": None,
-        "error": "Invalid Image Type. Allowed Image Types are: {}".format(appcfg.ALLOWED_IMAGE_TYPE),
+        "error": "Invalid Image Type. Allowed Image Types are: {}".format(apicfg.ALLOWED_IMAGE_TYPE),
         'status_code': res_code,
         'timings': {
           'image_read': -1,
